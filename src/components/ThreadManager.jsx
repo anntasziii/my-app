@@ -78,11 +78,15 @@ export default function ThreadManager() {
     <div>
       <div>
         {threads.map(thread => (
-          <button key={thread.id} onClick={() => setActiveThreadId(thread.id)}>
+          <button 
+          style={{ marginLeft: '10px' }}
+          key={thread.id} onClick={() => setActiveThreadId(thread.id)}>
             {thread.name}
           </button>
         ))}
-        <button onClick={() => {
+        <button
+        style={{ marginLeft: '10px' }}
+        onClick={() => {
           const newId = threads.length + 1;
           setThreads([...threads, { id: newId, name: `Thread ${newId}`, blocks: [], scriptText: '' }]);
           setActiveThreadId(newId);
@@ -100,7 +104,6 @@ export default function ThreadManager() {
 
       <BlockPreview blocks={activeThread.blocks} />
       <BlockInput onAdd={addBlock} />
-
       <BlockGraph blocks={activeThread.blocks} />
     </div>
   );

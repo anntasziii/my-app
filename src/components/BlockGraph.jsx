@@ -12,7 +12,8 @@ export default function BlockGraph({ blocks }) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [language, setLanguage] = useState('python');
-  const [statusMessage, setStatusMessage] = useState('');
+  const [testInput, setTestInput] = useState('');
+  const [responseMessage, setResponseMessage] = useState('');
 
   useEffect(() => {
     const newNodes = blocks.map((block, i) => ({
@@ -30,61 +31,70 @@ export default function BlockGraph({ blocks }) {
 
     setNodes(newNodes);
     setEdges(newEdges);
-  }, [blocks, setNodes, setEdges]);
+  }, [blocks]);
 
-  const handleSendSchema = async () => {
-    const schemaText = blocks.map((block) => block.text).join('\n');
-
-    const body = {
-      schema: schemaText,
-      language: language
-    };
-
+  const sendSchema = async () => {
     try {
-      const response = await fetch('http://localhost:8080/kpz/schema', {
+      const res = await fetch('http://localhost:8080/kpz/schema', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body)
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ schema: blocks, language }),
       });
 
-      if (response.ok) {
-        setStatusMessage('Shell sent successfully!');
+      if (res.ok) {
+        setResponseMessage('Schema sent successfully');
       } else {
-        setStatusMessage('Error in schema!');
+        setResponseMessage(`Error: Server responded with status ${res.status}`);
       }
     } catch (error) {
-      setStatusMessage(`Server error: ${error.message}`);
+      console.error('Error:', error);
+      setResponseMessage('Server is not available');
+    }
+  };
+
+  const sendTests = async () => {
+    try {
+      const parsedTests = JSON.parse(testInput);
+
+      const res = await fetch('http://localhost:8080/kpz/schema', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ schema: blocks, tests: parsedTests, language }),
+      });
+
+      if (res.ok) {
+        setResponseMessage('Test passed');
+      } else if (res.status === 400) {
+        setResponseMessage('Bug in schema — incorrect response');
+      } else {
+        setResponseMessage(`Unknown error (status ${res.status})`);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      setResponseMessage('Invalid test input (JSON expected)');
     }
   };
 
   return (
-    <div>
+    <div style={{ padding: '20px' }}>
+      <h1 style={{ fontSize: '24px', marginBottom: '10px' }}>Flowchart Builder</h1>
+
       <div style={{ marginBottom: '10px' }}>
-        <select
-          value={language}
-          onChange={(e) => setLanguage(e.target.value)}
-          style={{ marginRight: '10px', padding: '5px' }}
-        >
-          <option value="python">Python</option>
-          <option value="lava">Lava</option>
-          <option value="cpp">C++</option>
-          <option value="csharp">C#</option>
-        </select>
-
-        <button onClick={handleSendSchema} style={{ padding: '5px 10px' }}>
-          Send schema
+        <label>
+          Language:&nbsp;
+          <select value={language} onChange={(e) => setLanguage(e.target.value)}>
+            <option value="python">Python</option>
+            <option value="java">Java</option>
+            <option value="c++">C++</option>
+            <option value="c#">C#</option>
+          </select>
+        </label>
+        <button onClick={sendSchema} style={{ marginLeft: '20px' }}>
+          Send Schema
         </button>
-
-        {statusMessage && (
-          <span style={{ marginLeft: '15px', fontWeight: 'bold' }}>
-            {statusMessage}
-          </span>
-        )}
       </div>
 
-      <div style={{ height: 500, border: '2px solid gray', borderRadius: '10px', backgroundColor: '#FFFFFF' }}>
+      <div style={{ height: 500, border: '2px solid #ccc', borderRadius: 8, marginBottom: '20px', background: '#fff' }}>
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -92,11 +102,43 @@ export default function BlockGraph({ blocks }) {
           onEdgesChange={onEdgesChange}
           fitView
         >
-          <Background />
           <MiniMap />
           <Controls />
+          <Background />
         </ReactFlow>
       </div>
+
+      <div>
+        <label>
+          Enter tests (JSON format):
+          <textarea
+            value={testInput}
+            onChange={(e) => setTestInput(e.target.value)}
+            rows={6}
+            style={{ width: '100%', fontFamily: 'monospace', marginTop: '10px' }}
+          />
+        </label>
+        <button
+        onClick={sendTests}
+        style={{
+          marginTop: 20,
+          padding: '10px 20px',
+          fontSize: 16,
+          backgroundColor: '#4CAF50',
+          color: 'white',
+          border: 'none',
+          borderRadius: 4,
+          cursor: 'pointer',
+        }}>
+        Send Tests
+      </button>
+      </div>
+
+      {responseMessage && (
+        <div style={{ marginTop: '15px', fontWeight: 'bold', color: '#333' }}>
+          {responseMessage}
+        </div>
+      )}
     </div>
   );
 }
